@@ -1,8 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const fs = require("fs");
-const path = require("path");
+const { MongoClient } = require("mongodb");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -10,33 +9,39 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(bodyParser.json());
 
-const DB_PATH = path.join(__dirname, "db.json");
+const MONGO_URI = "mongodb+srv://elizabetheilbert:o05Y5lgRq5PJ5gli@cluster0.ofykdac.mongodb.net/";
+const client = new MongoClient(MONGO_URI);
+let studentsCollection;
 
-// Load or create DB
-let db = {};
-if (fs.existsSync(DB_PATH)) {
-  db = JSON.parse(fs.readFileSync(DB_PATH, "utf-8"));
+async function start() {
+  await client.connect();
+  const db = client.db("student_tracker");
+  studentsCollection = db.collection("students");
+
+  app.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
+  });
 }
 
-// Save helper
-const saveDB = () => {
-  fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
-};
+start();
 
-// Get student progress
-app.get("/students/:slug", (req, res) => {
+// GET student progress
+app.get("/students/:slug", async (req, res) => {
   const slug = req.params.slug;
-  res.json(db[slug] || {});
+  const student = await studentsCollection.findOne({ slug });
+  res.json(student?.progress || {});
 });
 
-// Save student progress
-app.post("/students/:slug", (req, res) => {
+// POST student progress
+app.post("/students/:slug", async (req, res) => {
   const slug = req.params.slug;
-  db[slug] = req.body;
-  saveDB();
+  const progress = req.body;
+
+  await studentsCollection.updateOne(
+    { slug },
+    { $set: { slug, progress } },
+    { upsert: true }
+  );
+
   res.json({ success: true });
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
 });
