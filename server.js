@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(bodyParser.json());
 
-const MONGO_URI = "mongodb+srv://elizabetheilbert:o05Y5lgRq5PJ5gli@cluster0.ofykdac.mongodb.net/";
+const MONGO_URI = process.env.MONGO_URI;
 const client = new MongoClient(MONGO_URI);
 let studentsCollection;
 
